@@ -55,20 +55,16 @@ impl Window {
         let hdc = unsafe { GetDC(hwnd) };
         Self { name, class_name, pos_x, pos_y, height, width, class, h_instance, hwnd, hdc }
     }
-    pub fn show(&self) {
-        unsafe {
-            ShowWindow(self.hwnd, SW_SHOW);
-            self.update();
-        };
+    pub unsafe fn show(&self) {
+        ShowWindow(self.hwnd, SW_SHOW);
+        self.update();
     }
-    pub fn get_input(&self){
+    pub unsafe fn get_input(&self){
         let mut msg: MSG = unsafe { std::mem::zeroed() };
-        while unsafe { GetMessageW(&mut msg, null_mut(), 0, 0) } > 0 {
-            unsafe {
-                TranslateMessage(&msg);
-                DispatchMessageW(&msg);
-                self.update();
-            };
+        while GetMessageW(&mut msg, null_mut(), 0, 0) > 0 {
+            TranslateMessage(&msg);
+            DispatchMessageW(&msg);
+            self.update();
         };
     }
     pub fn update(&self) {
@@ -76,31 +72,24 @@ impl Window {
             UpdateWindow(self.hwnd);
         }
     }
-    pub fn draw_line(&self, start_point:&Point,end_point:&Point) {
-        unsafe {
-            MoveToEx(self.hdc, start_point.x, start_point.y, 0 as LPPOINT);
-            LineTo(self.hdc, end_point.x, end_point.y);
-        }
+    pub unsafe fn draw_line(&self, start_point:&Point,end_point:&Point) {
+        MoveToEx(self.hdc, start_point.x, start_point.y, 0 as LPPOINT);
+        LineTo(self.hdc, end_point.x, end_point.y);
     }
-    pub fn draw_rectangle(&self,start_point:Point,width:u32,height:u32){
+    pub unsafe fn draw_rectangle(&self,start_point:Point,width:u32,height:u32){
         self.draw_line(&start_point, &Point { x: start_point.x + width as i32, y: start_point.y });
         self.draw_line(&start_point, &Point { x: start_point.x, y: start_point.y + height as i32 });
         self.draw_line(&Point { x: start_point.x + width as i32, y: start_point.y }, &Point{x:start_point.x + width as i32,y:start_point.y + height as i32});
         self.draw_line(&Point { x: start_point.x, y: start_point.y + height as i32},&Point{x:start_point.x + width as i32,y:start_point.y + height as i32});
     }
-    pub fn draw_triangle(&self,p1: Point,p2: Point,p3: Point){
+    pub unsafe fn draw_triangle(&self,p1: Point,p2: Point,p3: Point){
         self.draw_line(&p1, &p2);
         self.draw_line(&p1, &p3);
         self.draw_line(&p2, &p3);
     }
-    pub fn change_pencil(&self, width:u32 ,color:Color){
-        unsafe{
-            let pen:HPEN = CreatePen(PS_SOLID as c_int, width as c_int, RGB(color.r, color.g, color.b));
-            let old_pen:HGDIOBJ = SelectObject(self.hdc,pen as _);
-            DeleteObject(old_pen);
-        };
+    pub unsafe fn change_pencil(&self, width:u32 ,color:Color){
+        let pen:HPEN = CreatePen(PS_SOLID as c_int, width as c_int, RGB(color.r, color.g, color.b));
+        let old_pen:HGDIOBJ = SelectObject(self.hdc,pen as _);
+        DeleteObject(old_pen);
     }
-    /*pub fn fill(&self){
-
-    }*/
 }
