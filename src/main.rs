@@ -7,8 +7,8 @@ fn main() {
 
 
     window.show();
-
-    window.draw_line(Point{x: 50,y: 50},Point{x: 100,y: 50});
+    window.draw_line(&Point{x: 20,y: 50},Point{x: 50,y: 50});
+    window.draw_rectangle(&Point{x: 50,y: 50},50,50);
 
     window.get_input();
 }

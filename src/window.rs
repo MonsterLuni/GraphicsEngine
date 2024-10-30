@@ -69,12 +69,18 @@ impl Window {
             UpdateWindow(self.hwnd);
         }
     }
-    pub fn draw_line(&self, start_point:Point,end_point:Point) {
+    pub fn draw_line(&self, start_point:&Point,end_point:Point) {
         unsafe {
             let hdc = GetDC(self.hwnd);
             MoveToEx(hdc, start_point.x, start_point.y, 0 as LPPOINT);
             LineTo(hdc, end_point.x, end_point.y);
             ReleaseDC(self.hwnd, hdc);
         }
+    }
+    pub fn draw_rectangle(&self,start_point: &Point,width:u32,height:u32){
+        self.draw_line(start_point,Point{x:start_point.x + width as i32,y:start_point.y});
+        self.draw_line(start_point,Point{x:start_point.x,y:start_point.y + height as i32});
+        self.draw_line(&Point { x: start_point.x + width as i32, y: start_point.y }, Point{x:start_point.x + width as i32,y:start_point.y + height as i32});
+        self.draw_line(&Point { x: start_point.x, y: start_point.y + height as i32},Point{x:start_point.x + width as i32,y:start_point.y + height as i32});
     }
 }
