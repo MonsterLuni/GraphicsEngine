@@ -2,6 +2,10 @@
 name = "GraphicsEngine"
 version = "0.1.0"
 edition = "2021"
+authors = ["Luca Moser"]
+description = "This is my try at making an api to use for Graphics in Rust. It uses the winapi crate and focuses on making it easy to create and modify Windows"
+repository = "https://github.com/MonsterLuni/GraphicsEngine"
+license = "MIT"
 
 [dependencies]
 winapi = { version = "0.3.9", features = ["winuser", "libloaderapi", "windef", "minwindef", "wingdi"] }
