@@ -1,12 +1,10 @@
 use std::ptr::{null, null_mut};
-use std::thread;
-use std::time::Duration;
 use winapi::ctypes::c_int;
 use winapi::um::winuser::{CreateWindowExW, DefWindowProcW, DispatchMessageW, GetDC, GetMessageW, RegisterClassW, ReleaseDC, ShowWindow, TranslateMessage, UpdateWindow, MSG, SW_SHOW, WNDCLASSW, WS_OVERLAPPEDWINDOW};
 use winapi::um::libloaderapi::GetModuleHandleW;
-use winapi::shared::windef::{HWND};
+use winapi::shared::windef::{HWND, LPPOINT};
 use winapi::shared::minwindef::{LRESULT, WPARAM, LPARAM, HINSTANCE};
-use winapi::um::wingdi::LineTo;
+use winapi::um::wingdi::{LineTo, MoveToEx};
 
 extern "system" fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
     unsafe { DefWindowProcW(hwnd, msg, w_param, l_param) }
@@ -16,13 +14,17 @@ fn to_w_string(s: &str) -> Vec<u16> {
     v.push(0); // Null-Terminierung
     v
 }
+pub struct Point{
+    pub x: i32,
+    pub y: i32
+}
 pub struct Window{
-    pub name:String,
-    pub class_name:String,
-    pub pos_x:u32,
-    pub pos_y:u32,
-    pub height:u32,
-    pub width:u32,
+    name:String,
+    class_name:String,
+    pos_x:u32,
+    pos_y:u32,
+    height:u32,
+    width:u32,
     class:WNDCLASSW,
     h_instance:HINSTANCE,
     hwnd: HWND
@@ -49,22 +51,29 @@ impl Window {
     pub fn show(&self) {
         unsafe {
             ShowWindow(self.hwnd, SW_SHOW);
-            UpdateWindow(self.hwnd);
+            self.update();
         };
+    }
+    pub fn get_input(&self){
         let mut msg: MSG = unsafe { std::mem::zeroed() };
         while unsafe { GetMessageW(&mut msg, null_mut(), 0, 0) } > 0 {
             unsafe {
                 TranslateMessage(&msg);
                 DispatchMessageW(&msg);
-                self.draw()
+                self.update();
             };
-            thread::sleep(Duration::from_millis(1));
         };
     }
-    pub fn draw(&self){
+    pub fn update(&self) {
         unsafe{
+            UpdateWindow(self.hwnd);
+        }
+    }
+    pub fn draw_line(&self, start_point:Point,end_point:Point) {
+        unsafe {
             let hdc = GetDC(self.hwnd);
-            LineTo(hdc,100,100);
+            MoveToEx(hdc, start_point.x, start_point.y, 0 as LPPOINT);
+            LineTo(hdc, end_point.x, end_point.y);
             ReleaseDC(self.hwnd, hdc);
         }
     }
