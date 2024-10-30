@@ -1,4 +1,4 @@
-mod window;
+pub mod window;
 
 use crate::window::{Color, Point, Window};
 
