@@ -1,4 +1,4 @@
-mod window;
+pub mod window;
 use window::{receive_messages, Color, Point, Window};
 
 fn main() {

@@ -1,4 +1,3 @@
-pub use self::Window::*;
 use std::ptr::{null, null_mut};
 use winapi::ctypes::c_int;
 use winapi::shared::minwindef::{HINSTANCE, LPARAM, LRESULT, WPARAM};
