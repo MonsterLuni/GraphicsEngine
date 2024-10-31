@@ -1,5 +1,4 @@
 use std::ptr::{null, null_mut};
-use std::thread;
 use winapi::ctypes::c_int;
 use winapi::shared::minwindef::{HINSTANCE, LPARAM, LRESULT, WPARAM};
 use winapi::shared::windef::{HDC, HGDIOBJ, HPEN, HWND, LPPOINT};
@@ -59,7 +58,7 @@ impl Window {
         Self { name, class_name, pos_x, pos_y, height, width, class, h_instance, hwnd, hdc }
     }
     pub unsafe fn show(&self) {
-        ShowWindow(self.hwnd, SW_SHOW);
+        let _ = ShowWindow(self.hwnd, SW_SHOW);
         self.update();
     }
 
