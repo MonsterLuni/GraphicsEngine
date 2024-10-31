@@ -1,13 +1,16 @@
 use std::ptr::{null, null_mut};
+use std::thread;
 use winapi::ctypes::c_int;
-use winapi::um::winuser::{CreateWindowExW, DefWindowProcW, DispatchMessageW, GetDC, GetMessageW, RegisterClassW, ShowWindow, TranslateMessage, UpdateWindow, MSG, SW_SHOW, WNDCLASSW, WS_OVERLAPPEDWINDOW};
-use winapi::um::libloaderapi::GetModuleHandleW;
+use winapi::shared::minwindef::{HINSTANCE, LPARAM, LRESULT, WPARAM};
 use winapi::shared::windef::{HDC, HGDIOBJ, HPEN, HWND, LPPOINT};
-use winapi::shared::minwindef::{LRESULT, WPARAM, LPARAM, HINSTANCE};
+use winapi::um::libloaderapi::GetModuleHandleW;
 use winapi::um::wingdi::{CreatePen, DeleteObject, LineTo, MoveToEx, SelectObject, PS_SOLID, RGB};
+use winapi::um::winuser::{CreateWindowExW, DefWindowProcW, DispatchMessageW, GetDC, GetMessageW, RegisterClassW, ShowWindow, TranslateMessage, UpdateWindow, MSG, SW_SHOW, WNDCLASSW, WS_OVERLAPPEDWINDOW};
 
-extern "system" fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
-    unsafe { DefWindowProcW(hwnd, msg, w_param, l_param) }
+unsafe extern "system"  fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
+    match msg {
+        _ => DefWindowProcW(hwnd, msg, w_param, l_param),
+    }
 }
 fn to_w_string(s: &str) -> Vec<u16> {
     let mut v: Vec<u16> = s.encode_utf16().collect();
@@ -59,14 +62,7 @@ impl Window {
         ShowWindow(self.hwnd, SW_SHOW);
         self.update();
     }
-    pub unsafe fn get_input(&self){
-        let mut msg: MSG = unsafe { std::mem::zeroed() };
-        while GetMessageW(&mut msg, null_mut(), 0, 0) > 0 {
-            TranslateMessage(&msg);
-            DispatchMessageW(&msg);
-            self.update();
-        };
-    }
+
     pub fn update(&self) {
         unsafe{
             UpdateWindow(self.hwnd);
@@ -91,5 +87,21 @@ impl Window {
         let pen:HPEN = CreatePen(PS_SOLID as c_int, width as c_int, RGB(color.r, color.g, color.b));
         let old_pen:HGDIOBJ = SelectObject(self.hdc,pen as _);
         DeleteObject(old_pen);
+    }
+    pub unsafe fn receive_message(&self) {
+        let mut msg: MSG = std::mem::zeroed();
+        let message_result = GetMessageW(&mut msg, self.hwnd, 0, 0) > 0;
+        if message_result{
+            TranslateMessage(&msg);
+            DispatchMessageW(&msg);
+        }
+    }
+}
+pub unsafe fn receive_messages() {
+    let mut msg: MSG = std::mem::zeroed();
+    let message_result = GetMessageW(&mut msg,null_mut(), 0, 0) > 0;
+    if message_result{
+        TranslateMessage(&msg);
+        DispatchMessageW(&msg);
     }
 }
