@@ -1,6 +1,5 @@
-pub mod window;
-
-use crate::window::{receive_messages, Color, Point, Window};
+mod window;
+use window::{receive_messages, Color, Point, Window};
 
 fn main() {
     let window: Window = Window::new("Heureka".to_string(), "Class".to_string(), 100, 100, 200, 200);
