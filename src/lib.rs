@@ -1,11 +1,11 @@
 pub mod window{
     use std::ptr::{null, null_mut};
     use winapi::ctypes::c_int;
-    use winapi::shared::minwindef::{HINSTANCE, LPARAM, LRESULT, WPARAM};
-    use winapi::shared::windef::{HDC, HGDIOBJ, HPEN, HWND, LPPOINT};
+    use winapi::shared::minwindef::{HINSTANCE, LPARAM, LRESULT, TRUE, WPARAM};
+    use winapi::shared::windef::{HBITMAP, HDC, HGDIOBJ, HPEN, HWND, LPPOINT, LPRECT, RECT};
     use winapi::um::libloaderapi::GetModuleHandleW;
-    use winapi::um::wingdi::{CreatePen, DeleteObject, LineTo, MoveToEx, SelectObject, PS_SOLID, RGB};
-    use winapi::um::winuser::{CreateWindowExW, DefWindowProcW, DispatchMessageW, GetDC, GetMessageW, RegisterClassW, ShowWindow, TranslateMessage, UpdateWindow, MSG, SW_SHOW, WNDCLASSW, WS_OVERLAPPEDWINDOW};
+    use winapi::um::wingdi::{BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, CreatePen, DeleteDC, DeleteObject, LineTo, MoveToEx, SelectObject, PS_SOLID, RGB, SRCCOPY};
+    use winapi::um::winuser::{CreateWindowExW, DefWindowProcW, DispatchMessageW, GetClientRect, GetDC, GetMessageW, InvalidateRect, RegisterClassW, ShowWindow, TranslateMessage, UpdateWindow, MSG, SW_SHOW, WNDCLASSW, WS_OVERLAPPEDWINDOW};
 
     unsafe extern "system"  fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
         match msg {
@@ -31,12 +31,15 @@ pub mod window{
         class_name:String,
         pos_x:u32,
         pos_y:u32,
-        height:u32,
-        width:u32,
         class:WNDCLASSW,
         h_instance:HINSTANCE,
         hwnd: HWND,
-        hdc: HDC
+        hdc: HDC,
+        buffer_hdc: Buffer
+    }
+    pub enum Buffer {
+        Some(HDC),
+        None,
     }
     impl Window {
         pub fn new(name: String, class_name: String, pos_x: u32, pos_y: u32, height: u32, width: u32) -> Self {
@@ -56,21 +59,58 @@ pub mod window{
             unsafe { RegisterClassW(&class) };
             let hwnd:HWND = unsafe { CreateWindowExW(0, to_w_string(&class_name).as_ptr(), to_w_string(&name).as_ptr(), WS_OVERLAPPEDWINDOW, pos_x as c_int, pos_y as c_int, width as c_int, height as c_int, null_mut(), null_mut(), h_instance, null_mut()) };
             let hdc = unsafe { GetDC(hwnd) };
-            Self { name, class_name, pos_x, pos_y, height, width, class, h_instance, hwnd, hdc }
+            Self { name, class_name, pos_x, pos_y, class, h_instance, hwnd, hdc, buffer_hdc: Buffer::None }
         }
         pub unsafe fn show(&self) {
             let _ = ShowWindow(self.hwnd, SW_SHOW);
-            self.update();
         }
-
-        pub fn update(&self) {
-            unsafe{
-                UpdateWindow(self.hwnd);
+        pub unsafe fn update(&self) {
+            InvalidateRect(self.hwnd,null_mut(),TRUE);
+            UpdateWindow(self.hwnd);
+        }
+        pub unsafe fn create_buffer(&mut self){
+            match self.buffer_hdc {
+                Buffer::Some(_) => {
+                    println!("There's already a buffer running");
+                }
+                Buffer::None => {
+                    let size:(u32,u32) = self.get_size();
+                    let hdc = CreateCompatibleDC(self.hdc);
+                    let h_bitmap:HBITMAP = CreateCompatibleBitmap(self.hdc, size.0 as c_int, size.1 as c_int);
+                    SelectObject(hdc, h_bitmap as _);
+                    self.buffer_hdc = Buffer::Some(hdc);
+                    self.change_pencil(1, Color { r: 0, g: 255, b: 0, });
+                    self.draw_line(&Point { x: 50, y: 100 }, &Point { x: 50, y: 200 });
+                }
             }
         }
+        pub unsafe fn use_buffer(&mut self){
+            match self.buffer_hdc {
+                Buffer::Some(hdc) => {
+                    let size:(u32,u32) = self.get_size();
+                    BitBlt(self.hdc, 0, 0, size.0 as c_int, size.1 as c_int, hdc, 0, 0, SRCCOPY);
+                    let old_bitmap: HGDIOBJ = SelectObject(hdc, null_mut());
+                    DeleteObject(old_bitmap);
+                    DeleteDC(hdc);
+                    self.buffer_hdc = Buffer::None;
+                }
+                Buffer::None => {
+                    println!("There's no buffer running");
+                }
+            }
+
+        }
         pub unsafe fn draw_line(&self, start_point:&Point,end_point:&Point) {
-            MoveToEx(self.hdc, start_point.x, start_point.y, 0 as LPPOINT);
-            LineTo(self.hdc, end_point.x, end_point.y);
+            match self.buffer_hdc {
+                Buffer::Some(hdc) => {
+                    MoveToEx(hdc, start_point.x, start_point.y, 0 as LPPOINT);
+                    LineTo(hdc, end_point.x, end_point.y);
+                }
+                Buffer::None => {
+                    MoveToEx(self.hdc, start_point.x, start_point.y, 0 as LPPOINT);
+                    LineTo(self.hdc, end_point.x, end_point.y);
+                }
+            }
         }
         pub unsafe fn draw_rectangle(&self,start_point:Point,width:u32,height:u32){
             self.draw_line(&start_point, &Point { x: start_point.x + width as i32, y: start_point.y });
@@ -84,9 +124,32 @@ pub mod window{
             self.draw_line(&p2, &p3);
         }
         pub unsafe fn change_pencil(&self, width:u32 ,color:Color){
-            let pen:HPEN = CreatePen(PS_SOLID as c_int, width as c_int, RGB(color.r, color.g, color.b));
-            let old_pen:HGDIOBJ = SelectObject(self.hdc,pen as _);
-            DeleteObject(old_pen);
+            match self.buffer_hdc {
+                Buffer::Some(hdc) => {
+                    let pen:HPEN = CreatePen(PS_SOLID as c_int, width as c_int, RGB(color.r, color.g, color.b));
+                    let old_pen:HGDIOBJ = SelectObject(hdc,pen as _);
+                    DeleteObject(old_pen);
+                }
+                Buffer::None => {
+                    let pen:HPEN = CreatePen(PS_SOLID as c_int, width as c_int, RGB(color.r, color.g, color.b));
+                    let old_pen:HGDIOBJ = SelectObject(self.hdc,pen as _);
+                    DeleteObject(old_pen);
+                }
+            }
+        }
+        pub unsafe fn fill(&self) {
+            let mut i:u32 = 0;
+            let size:(u32,u32) = self.get_size();
+            while i < size.0{
+                self.draw_line(&Point { x: i as i32, y: 0 }, &Point { x: i as i32, y: size.1 as i32 });
+                i += 1;
+            };
+        }
+        pub unsafe fn get_size(&self) -> (u32, u32){
+            let mut rect = RECT{left: 0, top: 0, right: 0, bottom: 0};
+            let lprect:LPRECT = &mut rect;
+            GetClientRect(self.hwnd, lprect);
+            (rect.right as u32, rect.bottom as u32)
         }
         pub unsafe fn receive_message(&self) {
             let mut msg: MSG = std::mem::zeroed();
