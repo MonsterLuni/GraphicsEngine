@@ -6,18 +6,40 @@ pub mod window{
     use winapi::shared::windef::{HBITMAP, HDC, HGDIOBJ, HPEN, HWND, LPPOINT, LPRECT, RECT};
     use winapi::um::libloaderapi::GetModuleHandleW;
     use winapi::um::wingdi::{BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, CreatePen, DeleteDC, DeleteObject, LineTo, MoveToEx, SelectObject, PS_SOLID, RGB, SRCCOPY};
-    use winapi::um::winuser::{CreateWindowExW, DefWindowProcW, DispatchMessageW, GetClientRect, GetDC, GetMessageW, GetWindowLongPtrW, InvalidateRect, RegisterClassW, SetWindowLongPtrW, ShowWindow, TranslateMessage, UpdateWindow, GWLP_USERDATA, MSG, SW_SHOW, WM_KEYDOWN, WM_KEYUP, WNDCLASSW, WS_OVERLAPPEDWINDOW};
+    use winapi::um::winuser::{CreateWindowExW, DefWindowProcW, DispatchMessageW, GetClientRect, GetDC, GetKeyState, GetMessageW, GetWindowLongPtrW, InvalidateRect, RegisterClassW, SetWindowLongPtrW, ShowWindow, TranslateMessage, UpdateWindow, GWLP_USERDATA, MSG, SW_SHOW, VK_LBUTTON, VK_MBUTTON, VK_RBUTTON, WM_KEYDOWN, WM_KEYUP, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEMOVE, WM_RBUTTONDOWN, WM_RBUTTONUP, WNDCLASSW, WS_OVERLAPPEDWINDOW};
 
     unsafe extern "system"  fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
         let user_data_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut UserData;
         if !user_data_ptr.is_null() {
             let user_data = &mut *user_data_ptr;
             match msg{
+                WM_MOUSEMOVE => {
+                    user_data.input_handler.mouse_pos = Point{x:(l_param & 0xFFFF) as i16 as i32,y:((l_param >> 16) & 0xFFFF) as i16 as i32};
+                }
                 WM_KEYUP => {
                     user_data.input_handler.register_key(w_param as i32, false);
                 }
                 WM_KEYDOWN => {
                     user_data.input_handler.register_key(w_param as i32, true);
+                }
+                // Mouse
+                WM_LBUTTONDOWN => {
+                    user_data.input_handler.mouse_state.insert(VK_LBUTTON,true);
+                }
+                WM_LBUTTONUP => {
+                    user_data.input_handler.mouse_state.insert(VK_LBUTTON,false);
+                }
+                WM_RBUTTONDOWN => {
+                    user_data.input_handler.mouse_state.insert(VK_RBUTTON,true);
+                }
+                WM_RBUTTONUP => {
+                    user_data.input_handler.mouse_state.insert(VK_RBUTTON,false);
+                }
+                WM_MBUTTONDOWN => {
+                    user_data.input_handler.mouse_state.insert(VK_MBUTTON,true);
+                }
+                WM_MBUTTONUP => {
+                    user_data.input_handler.mouse_state.insert(VK_MBUTTON,false);
                 }
                 _ => {}
             }
@@ -191,10 +213,12 @@ pub mod window{
         None,
     }
     pub struct InputHandler {
-        pub key_states: HashMap<c_int,bool>
+        pub key_states: HashMap<c_int,bool>,
+        pub mouse_state: HashMap<c_int,bool>,
+        pub mouse_pos: Point
     }
     impl InputHandler{
-        pub fn new() -> Self{ InputHandler{ key_states: HashMap::new() } }
+        pub fn new() -> Self{ InputHandler{ key_states: HashMap::new(), mouse_state: HashMap::new(), mouse_pos: Point { x: -1, y: -1 } } }
         fn register_key(&mut self, key:c_int, value:bool){
             self.key_states.insert(key, value);
         }
