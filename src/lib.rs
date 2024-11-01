@@ -6,8 +6,7 @@ pub mod window{
     use winapi::shared::windef::{HBITMAP, HDC, HGDIOBJ, HPEN, HWND, LPPOINT, LPRECT, RECT};
     use winapi::um::libloaderapi::GetModuleHandleW;
     use winapi::um::wingdi::{BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, CreatePen, DeleteDC, DeleteObject, LineTo, MoveToEx, SelectObject, PS_SOLID, RGB, SRCCOPY};
-    use winapi::um::winuser::{CreateWindowExW, DefWindowProcW, DispatchMessageW, GetClientRect, GetDC, GetKeyState, GetMessageW, GetWindowLongPtrW, InvalidateRect, RegisterClassW, SetWindowLongPtrW, ShowWindow, TranslateMessage, UpdateWindow, GWLP_USERDATA, MSG, SW_SHOW, VK_LBUTTON, VK_MBUTTON, VK_RBUTTON, WM_KEYDOWN, WM_KEYUP, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEMOVE, WM_RBUTTONDOWN, WM_RBUTTONUP, WNDCLASSW, WS_OVERLAPPEDWINDOW};
-
+    use winapi::um::winuser::{CreateWindowExW, DefWindowProcW, DispatchMessageW, GetClientRect, GetDC, GetMessageW, GetWindowLongPtrW, InvalidateRect, RegisterClassW, SetWindowLongPtrW, ShowWindow, TranslateMessage, UpdateWindow, GWLP_USERDATA, MSG, SW_SHOW, VK_LBUTTON, VK_MBUTTON, VK_RBUTTON, WM_KEYDOWN, WM_KEYUP, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEMOVE, WM_RBUTTONDOWN, WM_RBUTTONUP, WNDCLASSW, WS_OVERLAPPEDWINDOW};
     unsafe extern "system"  fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
         let user_data_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut UserData;
         if !user_data_ptr.is_null() {
@@ -48,11 +47,9 @@ pub mod window{
             _ => {DefWindowProcW(hwnd, msg, w_param, l_param)}
         }
     }
-
-    fn to_w_string(s: &str) -> Vec<u16> {
-        let mut v: Vec<u16> = s.encode_utf16().collect();
-        v.push(0);
-        v
+    pub enum Buffer {
+        Some(HDC),
+        None,
     }
     pub struct Point{
         pub x: i32,
@@ -62,6 +59,9 @@ pub mod window{
         pub r: u8,
         pub g: u8,
         pub b: u8
+    }
+    struct UserData {
+        input_handler: InputHandler
     }
     pub struct Window{
         name:String,
@@ -73,9 +73,6 @@ pub mod window{
         hwnd: HWND,
         hdc: HDC,
         buffer_hdc: Buffer,
-    }
-    struct UserData {
-        input_handler: InputHandler
     }
     impl Window {
         pub fn new(name: String, class_name: String, pos_x: u32, pos_y: u32, height: u32, width: u32) -> Self {
@@ -208,10 +205,6 @@ pub mod window{
             }
         }
     }
-    pub enum Buffer {
-        Some(HDC),
-        None,
-    }
     pub struct InputHandler {
         pub key_states: HashMap<c_int,bool>,
         pub mouse_state: HashMap<c_int,bool>,
@@ -230,6 +223,17 @@ pub mod window{
                 None => {false}
             }
         }
+        pub fn mouse_down(&self, key:c_int) -> bool{
+            match self.mouse_state.get(&key) {
+                Some(value) => {
+                    *value
+                }
+                None => {false}
+            }
+        }
+        pub fn mouse_position(&self) -> Point{
+            Point{x: self.mouse_pos.x,y: self.mouse_pos.y}
+        }
     }
     pub unsafe fn receive_messages() {
         let mut msg: MSG = std::mem::zeroed();
@@ -238,5 +242,10 @@ pub mod window{
             TranslateMessage(&msg);
             DispatchMessageW(&msg);
         }
+    }
+    fn to_w_string(s: &str) -> Vec<u16> {
+        let mut v: Vec<u16> = s.encode_utf16().collect();
+        v.push(0);
+        v
     }
 }
