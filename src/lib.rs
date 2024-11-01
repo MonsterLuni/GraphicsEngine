@@ -1,17 +1,32 @@
 pub mod window{
+    use std::collections::HashMap;
     use std::ptr::{null, null_mut};
     use winapi::ctypes::c_int;
     use winapi::shared::minwindef::{HINSTANCE, LPARAM, LRESULT, TRUE, WPARAM};
     use winapi::shared::windef::{HBITMAP, HDC, HGDIOBJ, HPEN, HWND, LPPOINT, LPRECT, RECT};
     use winapi::um::libloaderapi::GetModuleHandleW;
     use winapi::um::wingdi::{BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, CreatePen, DeleteDC, DeleteObject, LineTo, MoveToEx, SelectObject, PS_SOLID, RGB, SRCCOPY};
-    use winapi::um::winuser::{CreateWindowExW, DefWindowProcW, DispatchMessageW, GetClientRect, GetDC, GetMessageW, InvalidateRect, RegisterClassW, ShowWindow, TranslateMessage, UpdateWindow, MSG, SW_SHOW, WNDCLASSW, WS_OVERLAPPEDWINDOW};
+    use winapi::um::winuser::{CreateWindowExW, DefWindowProcW, DispatchMessageW, GetClientRect, GetDC, GetMessageW, GetWindowLongPtrW, InvalidateRect, RegisterClassW, SetWindowLongPtrW, ShowWindow, TranslateMessage, UpdateWindow, GWLP_USERDATA, MSG, SW_SHOW, WM_KEYDOWN, WM_KEYUP, WNDCLASSW, WS_OVERLAPPEDWINDOW};
 
     unsafe extern "system"  fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
-        match msg {
-            _ => DefWindowProcW(hwnd, msg, w_param, l_param),
+        let user_data_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut UserData;
+        if !user_data_ptr.is_null() {
+            let user_data = &mut *user_data_ptr;
+            match msg{
+                WM_KEYUP => {
+                    user_data.input_handler.register_key(w_param as i32, false);
+                }
+                WM_KEYDOWN => {
+                    user_data.input_handler.register_key(w_param as i32, true);
+                }
+                _ => {}
+            }
+        }
+        match msg{
+            _ => {DefWindowProcW(hwnd, msg, w_param, l_param)}
         }
     }
+
     fn to_w_string(s: &str) -> Vec<u16> {
         let mut v: Vec<u16> = s.encode_utf16().collect();
         v.push(0);
@@ -35,11 +50,10 @@ pub mod window{
         h_instance:HINSTANCE,
         hwnd: HWND,
         hdc: HDC,
-        buffer_hdc: Buffer
+        buffer_hdc: Buffer,
     }
-    pub enum Buffer {
-        Some(HDC),
-        None,
+    struct UserData {
+        input_handler: InputHandler
     }
     impl Window {
         pub fn new(name: String, class_name: String, pos_x: u32, pos_y: u32, height: u32, width: u32) -> Self {
@@ -59,6 +73,11 @@ pub mod window{
             unsafe { RegisterClassW(&class) };
             let hwnd:HWND = unsafe { CreateWindowExW(0, to_w_string(&class_name).as_ptr(), to_w_string(&name).as_ptr(), WS_OVERLAPPEDWINDOW, pos_x as c_int, pos_y as c_int, width as c_int, height as c_int, null_mut(), null_mut(), h_instance, null_mut()) };
             let hdc = unsafe { GetDC(hwnd) };
+            let user_data = Box::new(UserData {
+                input_handler: InputHandler::new(),
+            });
+            let user_data_ptr = Box::into_raw(user_data) as isize;
+            unsafe { SetWindowLongPtrW(hwnd, GWLP_USERDATA, user_data_ptr) };
             Self { name, class_name, pos_x, pos_y, class, h_instance, hwnd, hdc, buffer_hdc: Buffer::None }
         }
         pub unsafe fn show(&self) {
@@ -79,8 +98,6 @@ pub mod window{
                     let h_bitmap:HBITMAP = CreateCompatibleBitmap(self.hdc, size.0 as c_int, size.1 as c_int);
                     SelectObject(hdc, h_bitmap as _);
                     self.buffer_hdc = Buffer::Some(hdc);
-                    self.change_pencil(1, Color { r: 0, g: 255, b: 0, });
-                    self.draw_line(&Point { x: 50, y: 100 }, &Point { x: 50, y: 200 });
                 }
             }
         }
@@ -99,6 +116,15 @@ pub mod window{
                 }
             }
 
+        }
+        pub unsafe fn get_input_handler(&self) -> Option<&InputHandler>{
+            let user_data_ptr = GetWindowLongPtrW(self.hwnd, GWLP_USERDATA) as *mut UserData;
+            if !user_data_ptr.is_null() {
+                let user_data = &mut *user_data_ptr;
+                Some(&user_data.input_handler)
+            }else{
+                None
+            }
         }
         pub unsafe fn draw_line(&self, start_point:&Point,end_point:&Point) {
             match self.buffer_hdc {
@@ -157,6 +183,27 @@ pub mod window{
             if message_result{
                 TranslateMessage(&msg);
                 DispatchMessageW(&msg);
+            }
+        }
+    }
+    pub enum Buffer {
+        Some(HDC),
+        None,
+    }
+    pub struct InputHandler {
+        pub key_states: HashMap<c_int,bool>
+    }
+    impl InputHandler{
+        pub fn new() -> Self{ InputHandler{ key_states: HashMap::new() } }
+        fn register_key(&mut self, key:c_int, value:bool){
+            self.key_states.insert(key, value);
+        }
+        pub fn key_down(&self, key:c_int) -> bool{
+            match self.key_states.get(&key) {
+                Some(value) => {
+                    *value
+                }
+                None => {false}
             }
         }
     }
