@@ -5,7 +5,7 @@ pub mod window{
     use winapi::shared::minwindef::{HINSTANCE, LPARAM, LRESULT, TRUE, WPARAM};
     use winapi::shared::windef::{HBITMAP, HDC, HGDIOBJ, HPEN, HWND, LPPOINT, LPRECT, RECT};
     use winapi::um::libloaderapi::GetModuleHandleW;
-    use winapi::um::wingdi::{BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, CreatePen, DeleteDC, DeleteObject, LineTo, MoveToEx, SelectObject, PS_SOLID, RGB, SRCCOPY};
+    use winapi::um::wingdi::{BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, CreatePen, DeleteDC, DeleteObject, Ellipse, GetStockObject, LineTo, MoveToEx, SelectObject, NULL_BRUSH, PS_SOLID, RGB, SRCCOPY};
     use winapi::um::winuser::{CreateWindowExW, DefWindowProcW, DispatchMessageW, GetClientRect, GetDC, GetMessageW, GetWindowLongPtrW, InvalidateRect, RegisterClassW, SetWindowLongPtrW, ShowWindow, TranslateMessage, UpdateWindow, GWLP_USERDATA, MSG, SW_SHOW, VK_LBUTTON, VK_MBUTTON, VK_RBUTTON, WM_KEYDOWN, WM_KEYUP, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEMOVE, WM_RBUTTONDOWN, WM_RBUTTONUP, WNDCLASSW, WS_OVERLAPPEDWINDOW};
     unsafe extern "system"  fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
         let user_data_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut UserData;
@@ -74,6 +74,7 @@ pub mod window{
         hdc: HDC,
         buffer_hdc: Buffer,
     }
+
     impl Window {
         pub fn new(name: String, class_name: String, pos_x: u32, pos_y: u32, height: u32, width: u32) -> Self {
             let h_instance = unsafe { GetModuleHandleW(null()) };
@@ -154,6 +155,30 @@ pub mod window{
                 Buffer::None => {
                     MoveToEx(self.hdc, start_point.x, start_point.y, 0 as LPPOINT);
                     LineTo(self.hdc, end_point.x, end_point.y);
+                }
+            }
+        }
+        pub unsafe fn draw_circle(&self,middle_position:Point,radius:u32) {
+            match self.buffer_hdc {
+                Buffer::Some(hdc) => {
+                    SelectObject(hdc, GetStockObject(NULL_BRUSH as c_int));
+                    Ellipse(hdc, middle_position.x - radius as i32, middle_position.y - radius as i32, middle_position.x + radius as i32, middle_position.y + radius as i32);
+                }
+                Buffer::None => {
+                    SelectObject(self.hdc, GetStockObject(NULL_BRUSH as c_int));
+                    Ellipse(self.hdc, middle_position.x - radius as i32, middle_position.y - radius as i32, middle_position.x + radius as i32, middle_position.y + radius as i32);
+                }
+            }
+        }
+        pub unsafe fn draw_ellipse(&self,left:u32,right:u32,top:u32,bottom:u32) {
+            match self.buffer_hdc {
+                Buffer::Some(hdc) => {
+                    SelectObject(hdc, GetStockObject(NULL_BRUSH as c_int));
+                    Ellipse(hdc, left as c_int, right as c_int, top as c_int, bottom as c_int);
+                }
+                Buffer::None => {
+                    SelectObject(self.hdc, GetStockObject(NULL_BRUSH as c_int));
+                    Ellipse(self.hdc, left as c_int, right as c_int, top as c_int, bottom as c_int);
                 }
             }
         }
