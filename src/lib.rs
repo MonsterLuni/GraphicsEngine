@@ -5,7 +5,7 @@ pub mod window{
     use winapi::shared::minwindef::{HINSTANCE, LPARAM, LRESULT, TRUE, WPARAM};
     use winapi::shared::windef::{HBITMAP, HDC, HGDIOBJ, HPEN, HWND, LPPOINT, LPRECT, RECT};
     use winapi::um::libloaderapi::GetModuleHandleW;
-    use winapi::um::wingdi::{BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, CreatePen, DeleteDC, DeleteObject, Ellipse, GetStockObject, LineTo, MoveToEx, SelectObject, NULL_BRUSH, PS_SOLID, RGB, SRCCOPY};
+    use winapi::um::wingdi::{BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, CreatePen, DeleteDC, DeleteObject, Ellipse, GetStockObject, LineTo, MoveToEx, SelectObject, SetBkMode, SetTextColor, TextOutW, NULL_BRUSH, PS_SOLID, RGB, SRCCOPY};
     use winapi::um::winuser::{CreateWindowExW, DefWindowProcW, DispatchMessageW, GetClientRect, GetDC, GetMessageW, GetWindowLongPtrW, InvalidateRect, RegisterClassW, SetWindowLongPtrW, ShowWindow, TranslateMessage, UpdateWindow, GWLP_USERDATA, MSG, SW_SHOW, VK_LBUTTON, VK_MBUTTON, VK_RBUTTON, WM_KEYDOWN, WM_KEYUP, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEMOVE, WM_RBUTTONDOWN, WM_RBUTTONUP, WNDCLASSW, WS_OVERLAPPEDWINDOW};
     unsafe extern "system"  fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
         let user_data_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut UserData;
@@ -74,7 +74,6 @@ pub mod window{
         hdc: HDC,
         buffer_hdc: Buffer,
     }
-
     impl Window {
         pub fn new(name: String, class_name: String, pos_x: u32, pos_y: u32, height: u32, width: u32) -> Self {
             let h_instance = unsafe { GetModuleHandleW(null()) };
@@ -192,6 +191,20 @@ pub mod window{
             self.draw_line(&p1, &p2);
             self.draw_line(&p1, &p3);
             self.draw_line(&p2, &p3);
+        }
+        pub unsafe fn draw_string(&self, string:&str,p1:Point, color:Color){
+            match self.buffer_hdc {
+                Buffer::Some(hdc) => {
+                    SetBkMode(hdc, 1);
+                    SetTextColor(hdc, RGB(color.r,color.g,color.b));
+                    TextOutW(hdc,p1.x,p1.y,to_w_string(string).as_ptr(),string.len() as i32);
+                }
+                Buffer::None => {
+                    SetBkMode(self.hdc, 1);
+                    SetTextColor(self.hdc, RGB(color.r,color.g,color.b));
+                    TextOutW(self.hdc,p1.x,p1.y,to_w_string(string).as_ptr(),string.len() as i32);
+                }
+            }
         }
         pub unsafe fn change_pencil(&self, width:u32 ,color:Color){
             match self.buffer_hdc {

@@ -18,6 +18,7 @@ fn main() {
             }else{
                 window.change_pencil(1, Color { r: 0, g: 0, b: 255, });
             }
+            window.draw_string("Hello World!", Point { x: 100, y: 100 }, Color { r: 255, g: 0, b: 0, });
             window.draw_circle(Point { x: 100, y: 100 }, 100);
             window.draw_ellipse(50, 80, 90, 0);
             window.draw_triangle(Point { x: 10 + right, y: 10 }, Point { x: 10 + right, y: 80 }, Point { x: 100 + right, y: 80 });
