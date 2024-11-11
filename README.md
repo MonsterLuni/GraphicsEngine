@@ -65,10 +65,36 @@ fn main() {
 ```
 If you want to update the window you just have to call the { update() } function
 
+## Functionality
+In this section the most important Functions and the use cases for them will be elaborated
+
+### Key / Mouse Input
+To check if a Key is pressed you can get the input_handler from the Window object using <br>
+``` get_input_handler() ```
+Once you have the input handler you have access to three methods <br>
+
+``` key_down() ``` ``` mouse_down() ``` and ``` mouse_position() ``` <br>
+
+the first two have only one paramater which is the c_int of the key that is searched. <br>
+The return value is bool (true if the key / mouse button is down)
+
+#### Example:
+``` 
+if input_handler.unwrap().mouse_down(VK_LBUTTON) {
+    window.change_pencil(1, Color { r: 0, g: 255, b: 0, });
+}else{
+    window.change_pencil(1, Color { r: 0, g: 0, b: 255, });
+}
+```
+
+
+
 ## Things that will follow
 I want to add...  <br>
 
 ..documentation to every function so that everybody has a better time using this library <br>
-..a way to easily add key and mouse inputs to the window <br>
+.. support for displaying images <br>
+.. fill functions for all of the draw functions <br>
+.. settings for the window so that style can be edited <br>
 
-Any other thing I'm working on is visible as an Issue in this GitLab Project 
+Any other thing I'm working on is visible as an Issue in this Github Project 
